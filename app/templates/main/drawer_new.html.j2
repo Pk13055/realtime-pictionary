@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		
+		<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+      	<link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"  media="screen,projection"/>
+      	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		
+		<title>Pictionary-Chat: {{ room }}</title>
+		
+		<style>
+			body {font-family: Arial, Helvetica, sans-serif;}
+			* {
+				box-sizing: border-box;
+			}
+			img.avatar {
+				width: 50%;
+				height: 15%;
+				border-radius: 20%;
+			}
+			button {
+				background-color: teal;
+				color: white;
+				padding: 14px 20px;
+				margin: 8px 0;
+				border: none;
+				cursor: pointer;
+				border-radius: 2ex;
+			}
+
+			button:hover {
+				opacity: 0.8;
+			}
+
+			.col-1 {width: 8.33%;}
+			.col-2 {width: 16.66%;}
+			.col-3 {width: 25%;}
+			.col-4 {width: 33.33%;}
+			.col-5 {width: 41.66%;}
+			.col-6 {width: 50%;}
+			.col-7 {width: 58.33%;}
+			.col-8 {width: 66.66%;}
+			.col-9 {width: 75%;}
+			.col-10 {width: 83.33%;}
+			.col-11 {width: 91.66%;}
+			.col-12 {width: 100%;}
+			[class*="col-"] {
+				float: left;
+				padding: 15px;
+				border-radius: 15px;
+				}
+			.row::after {
+				content: "";
+				clear: both;
+				display: table;
+			}
+			.canvas_css{
+				border-style: solid;
+				border-color: teal;
+				border-radius: 2px;
+				padding-top: 15px;
+				background-color:white;
+			}
+			.canvas_css:hover{
+				cursor:crosshair;
+			}
+		</style>
+		<script>
+				function foo()
+				{
+					var c=document.getElementById('can');
+					var xyz=c.toDataURL();
+					$.ajax({
+						url:'http://127.0.0.1:5000/updateImg',
+						method:'GET',
+						data:{vy:xyz},
+						success:function(response)
+						{
+						},
+						error: function(response)
+						{
+						},
+						});                
+				}
+		</script>
+		<script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+		<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+		<script type="text/javascript" charset="utf-8">
+			var socket;
+			$(document).ready(function(){
+				socket = io.connect('http://' + document.domain + ':' + location.port + '/chat');
+				socket.on('connect', function() {
+					socket.emit('joined', {});
+				});
+				socket.on('status', function(data) {
+					$('#chat').val($('#chat').val() + '<' + data.msg + '>\n');
+					$('#chat').scrollTop($('#chat')[0].scrollHeight);
+					setTimeout(remove_message,15000);
+				});
+				socket.on('message', function(data) {
+					$('#chat').val($('#chat').val() + data.msg + '\n');
+					$('#chat').scrollTop($('#chat')[0].scrollHeight);
+					setTimeout(remove_message,15000);
+				});
+			});
+
+			function leave_room() {
+				socket.emit('left', {}, function() {
+					socket.disconnect();
+
+					// go back to the login page
+					window.location.href = "{{ url_for('main.index') }}";
+				});
+			}
+		</script>
+		<script type="text/javascript">
+
+			var pen_co_ords = [];
+			var eraser_co_ords = [];
+			var canvas, ctx, flag = false,
+				prevX = 0,
+				currX = 0,
+				prevY = 0,
+				currY = 0,
+				dot_flag = false;
+
+			var x = "black",
+				y = 2;
+			
+			function init() {
+				canvas = document.getElementById('can');
+				ctx = canvas.getContext("2d");
+				w = canvas.width;
+				h = canvas.height;
+			
+				canvas.addEventListener("mousemove", function (e) {
+					findxy('move', e)
+				}, false);
+				canvas.addEventListener("mousedown", function (e) {
+					findxy('down', e)
+				}, false);
+				canvas.addEventListener("mouseup", function (e) {
+					findxy('up', e)
+				}, false);
+				canvas.addEventListener("mouseout", function (e) {
+					findxy('out', e)
+				}, false);
+			}
+			
+			function color(obj) {
+				switch (obj.id) {
+					case "green":
+						x = "green";
+						break;
+					case "blue":
+						x = "blue";
+						break;
+					case "red":
+						x = "red";
+						break;
+					case "yellow":
+						x = "yellow";
+						break;
+					case "orange":
+						x = "orange";
+						break;
+					case "black":
+						x = "black";
+						break;
+					case "white":
+						x = "white";
+						break;
+				}
+				if (x == "white") y = 14;
+				else y = 2;
+			
+			}
+			
+			function draw() {
+				ctx.beginPath();
+				ctx.moveTo(prevX, prevY);
+				ctx.lineTo(currX, currY);
+				ctx.strokeStyle = x;
+				ctx.lineWidth = y;
+				ctx.stroke();
+				ctx.closePath();
+			}
+			
+			function erase() {
+				var m = confirm("Want to clear");
+				if (m) {
+					ctx.clearRect(0, 0, w, h);
+					document.getElementById("canvasimg").style.display = "none";
+				}
+			}
+			
+			function save() {
+				document.getElementById("canvasimg").style.border = "2px solid";
+				var dataURL = canvas.toDataURL();
+				document.getElementById("canvasimg").src = dataURL;
+				document.getElementById("canvasimg").style.display = "inline";
+			}
+			function to_string_func(co_ords)
+			{
+				ans = ''
+				for(var i=0;i<co_ords.length;i++)
+				{
+					ans += co_ords[i].join(',')+'\r\n';
+				}
+				return ans;
+			}
+			function save_coord()
+			{
+				$.ajax({
+							url:'http://127.0.0.1:5000/savecoord',
+							method:'GET',
+							data:{pen:to_string_func(pen_co_ords),eraser:to_string_func(eraser_co_ords)},
+							success:function(response)
+							{
+							},
+							error: function(response)
+							{
+							},
+							});
+			}
+			setInterval(save_coord,5000);
+			function findxy(res, e) {
+				if (res == 'down') {
+					prevX = currX;
+					prevY = currY;
+					currX = e.clientX - canvas.offsetLeft;
+					currY = e.clientY - canvas.offsetTop;
+			
+					flag = true;
+					dot_flag = true;
+					if (dot_flag) {
+						ctx.beginPath();
+						ctx.fillStyle = x;
+						ctx.fillRect(currX, currY, 2, 2);
+						ctx.closePath();
+						dot_flag = false;
+						temp = [e.clientX - canvas.offsetLeft , e.clientY - canvas.offsetTop];
+						if(x=="white")
+						{
+							eraser_co_ords.push(temp);
+						}
+						else
+						{
+							pen_co_ords.push(temp);
+						}
+					}
+				}
+				if (res == 'up' || res == "out") {
+					flag = false;
+				}
+				if (res == 'move') {
+					if (flag) {
+						prevX = currX;
+						prevY = currY;
+						currX = e.clientX - canvas.offsetLeft;
+						currY = e.clientY - canvas.offsetTop;
+						draw();
+						temp = [e.clientX - canvas.offsetLeft , e.clientY - canvas.offsetTop];
+						if(x=="white")
+						{
+							eraser_co_ords.push(temp);
+						}
+						else
+						{
+							pen_co_ords.push(temp);
+						}
+					}
+				}
+			}
+			function remove_message()
+			{
+				var old_message = String(document.getElementById("chat").value);
+				old_message = old_message.split('\n');
+				old_message.shift();
+				old_message.pop();
+				var i;
+				var new_message = ''
+				for (i = 0; i < old_message.length; i++) {
+				new_message += old_message[i] + "\n";
+				}
+				document.getElementById("chat").value = new_message;
+			}
+		
+		</script>
+
+	</head>
+	
+	<body>
+		
+		<div class="navbar-fixed">
+    		<nav>
+      			<div class="nav-wrapper cyan darken-3 z-depth-2">
+        			<a href="#!" class="brand-logo center">Pictionary</a>
+    	  		</div>
+    		</nav>
+  		</div>
+
+		<div class="container row">
+			
+			<script>
+				setInterval(function(){foo()},1000);
+			</script>
+
+			<div class="col s12">
+            	<h2 class="header">{{ name }}</h2>
+            	<div class="card horizontal">
+                	<div class="card-image">
+                    	<img src="https://www.gravatar.com/avatar/94d093eda664aaad6e450ggg9881bcad?s=200&d=identicon&r=PG">
+                	</div>
+                	<div class="card-stacked">
+                    	<div class="card-content">
+                       		<h4 style="text-align:center;">Room ID: {{ room }} </h4>
+                       		<h4 style="text-align:center;"> Role: {{role}}</h4>
+                    	</div>
+                	</div>
+            	</div>
+        	</div>
+			<div class="row"></div>
+			<div class="row">
+				<div class = "col s12 m2" style="text-align:center;">
+					<img src="https://img.icons8.com/dusk/48/000000/marker-pen.png" id="black" onclick="color(this)" alt="pen">
+					<img src="https://i.ibb.co/cF7rmYz/eraser-48-289599.png" alt="eraser" border="0" id="white" onclick="color(this)">
+				</div>
+
+				<div class="col s12 m6" style="text-align:center;">
+					<canvas id="can" width="600" height="600" class="canvas_css"></canvas>
+				</div>
+				<div class="col s12 m4">
+					<textarea id="chat" cols="56" rows="28" style="color:teal;" readonly></textarea>
+				</div>
+			</div>
+			<div class="row center" >
+				<button class="btn waves-effect waves-light">Leave This Room
+					<i class="material-icons right">keyboard_arrow_right</i>
+				</button>
+			</div>
+		</div>
+	</body>
+</html>
+
+
+
+

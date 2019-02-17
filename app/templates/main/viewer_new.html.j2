@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+	<head>
+       	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+      	<link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"  media="screen,projection"/>
+        
+        <title>Pictionary-Chat: {{ room }}</title>
+        <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+        <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <script type="text/javascript" charset="utf-8">
+            var socket;
+            $(document).ready(function(){
+                socket = io.connect('http://' + document.domain + ':' + location.port + '/chat');
+                socket.on('connect', function() {
+                    socket.emit('joined', {});
+                });
+                socket.on('status', function(data) {
+                    $('#chat').val($('#chat').val() + '<' + data.msg + '>\n');
+                    $('#chat').scrollTop($('#chat')[0].scrollHeight);
+                });
+                socket.on('message', function(data) {
+                    $('#chat').val($('#chat').val() + data.msg + '\n');
+                    $('#chat').scrollTop($('#chat')[0].scrollHeight);
+                });
+                $('#text').keypress(function(e) {
+                    var code = e.keyCode || e.which;
+                    
+                    if (code == 13) {
+                        text = $('#text').val();
+                        $('#text').val('');
+                        text = text.split('\n');
+                        text = text.join('');
+                        console.log(text+"after");
+                        socket.emit('text', {msg: text});
+                    }
+                });
+            });
+            function leave_room() {
+                socket.emit('left', {}, function() {
+                    socket.disconnect();
+
+                    // go back to the login page
+                    window.location.href = "{{ url_for('main.index') }}";
+                });
+            }
+        </script>
+        
+		<script>
+			function openForm() {
+			document.getElementById("myForm").style.display = "block";
+			document.getElementById("like").style.display = "block";
+			document.getElementById("obutton").style.display = "none";
+			document.getElementById("cbutton").style.display = "block";
+			}
+
+			function closeForm() {
+			document.getElementById("myForm").style.display = "none";
+			document.getElementById("like").style.display = "none";
+			document.getElementById("cbutton").style.display = "none";
+			document.getElementById("obutton").style.display = "block";
+			} 
+			function myFunction1() {
+					socket.emit('text',{msg:"Liked the drawing!"})
+			}
+			function myFunction2() {
+					socket.emit('text',{msg:"Disliked the drawing."})
+			}
+			function foo()
+			{
+				$.ajax({
+					url:'http://127.0.0.1:5000/getImg',
+					method:'GET',
+					data:{},
+					success:function(response)
+					{
+						document.getElementById("canvasimg").style.border = "2px solid";
+						document.getElementById("canvasimg").src = response;
+					},
+					});
+			}
+			setInterval(function(){foo()},1000);
+		</script>
+
+		<style>
+          body {font-family: Arial, Helvetica, sans-serif;}
+          *{
+            box-sizing: border-box;
+          }
+          button {
+            background-color: teal;
+            color: white;
+            padding: 14px 20px;
+            margin: 8px 0;
+            border: none;
+            cursor: pointer;
+            border-radius: 2ex;
+          }
+    
+          button:hover {
+            opacity: 0.8;
+          }
+    
+          .col-1 {width: 8.33%;}
+          .col-2 {width: 16.66%;}
+          .col-3 {width: 25%;}
+          .col-4 {width: 33.33%;}
+          .col-5 {width: 41.66%;}
+          .col-6 {width: 50%;}
+          .col-7 {width: 58.33%;}
+          .col-8 {width: 66.66%;}
+          .col-9 {width: 75%;}
+          .col-10 {width: 83.33%;}
+          .col-11 {width: 91.66%;}
+          .col-12 {width: 100%;}
+          
+          [class*="col-"] {
+            float: left;
+            padding: 15px;
+            border-radius: 15px;
+            }
+          .row::after {
+            content: "";
+            clear: both;
+            display: table;
+          }
+          .canvas_css{
+            border-style: solid;
+            border-color: teal;
+            border-radius: 2px;
+            padding-top: 15px;
+            background-color:white;
+          }
+          .canvas_css:hover{
+            cursor:crosshair;
+          }
+        </style>
+		<style>
+          *{box-sizing: border-box;}
+          .fa {
+            font-size: 40px;
+            cursor: pointer;
+            user-select: none;
+            color:#66ccff;
+            padding: 16px 20px;
+            border: none;
+            opacity: 0.8;
+          }
+          .fa:hover {
+            color:#66ccff;
+          } 
+        </style>
+		
+		
+    </head>
+	<body>
+    	
+		<div class="navbar-fixed">
+    		<nav>
+      			<div class="nav-wrapper cyan darken-3 z-depth-2">
+        			<a href="#!" class="brand-logo center">Pictionary</a>
+    	  		</div>
+    		</nav>
+  		</div>
+
+		<div class="container row">
+			<div class="col s12">
+            	<h2 class="header">{{ name }}</h2>
+            	<div class="card horizontal">
+                	<div class="card-image">
+                    	<img src="https://www.gravatar.com/avatar/94d093eda664aaad6e450ggg9881bcad?s=200&d=identicon&r=PG">
+                	</div>
+                	<div class="card-stacked">
+                    	<div class="card-content">
+                       		<h4 style="text-align:center;">Room ID: {{ room }} </h4>
+                       		<h4 style="text-align:center;"> Role: {{role}}</h4>
+                    	</div>
+                	</div>
+            	</div>
+        	</div>
+  		<div class="row">
+    		<div class="col s12 m8" style="text-align:center;">
+      			<img id="canvasimg">
+      			<div class="row center" >
+					<button class="btn waves-effect waves-light">Leave This Room
+						<i class="material-icons right">keyboard_arrow_right</i>
+					</button>
+				</div>
+    		</div>
+
+    		<div class="col s12 m4">
+      			<button class="btn waves-effect waves-light" onclick="openForm();" id="obutton">Chat
+    		    	<i class="material-icons right">chat</i>
+  	        	</button>
+      			<span class="chat-popup" id="myForm" style="display: none">
+					<h4 style="color: teal; text-align: center">My Guesses</h4>
+					<textarea id="chat"  rows="20" cols=56 style="color:teal" readonly></textarea>
+					<textarea id="text"  cols="56" placeholder="Enter your message here" style="color:teal" required></textarea>
+        
+       	 			<span>
+          				<div class="row">
+            				<div class="col s12 m2">
+              					<i onclick="myFunction1()" id="like" class="fa fa-thumbs-up" style="display:none"></i>
+            				</div>
+            				<div class="col s12 m2">
+                				<i onclick="myFunction2()" id="dlike" class="fa fa-thumbs-down" ></i>
+            				</div>
+						</div>
+						<div class="row center">
+            				<button class="btn waves-effect waves-light" onclick="closeForm();" id="obutton">Close
+    		            			<i class="material-icons right">close</i>
+							</button>
+        				</div>
+        			</span>
+      			</span>
+    		</div>
+  		</div>
+	</div>
+	</body>
+</html>
