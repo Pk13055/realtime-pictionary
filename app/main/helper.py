@@ -1,17 +1,8 @@
-import json
-
 from flask import session
 from flask_socketio import emit, join_room, leave_room
 
-from app import rooms, socketio, requires_auth
+from app import logger, requires_auth, rooms, socketio
 
-
-log = []
-def write_to(log):
-    filename = "output_log.json"
-    with (open(filename,'w')) as fd:
-        fd.write(json.dumps(log))
-    return
 
 @socketio.on('joined', namespace='/chat/')
 @requires_auth
@@ -28,7 +19,7 @@ def joined_io(message):
 	join_room(room)
 	message = f"{name} has joined the room!"
 	emit(message)
-	# TODO: add (optional) logging
+	logger.info(message)
 
 
 @socketio.on('text')
@@ -44,7 +35,7 @@ def text_io(message, namespace='/chat/'):
 	emit('message', {
 		'message': message
 	}, room=user['room'])
-	# TODO: add (optional) logging
+	logger.info(message)
 
 
 @socketio.on('left', namespace='/chat/')
@@ -65,4 +56,4 @@ def left_io(message):
 	emit('message', {
 		'message': message
 	}, room=room)
-	# TODO: add (optional) logging
+	logger.info(message)

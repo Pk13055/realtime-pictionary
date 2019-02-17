@@ -1,11 +1,31 @@
 from functools import wraps
+from logging.config import dictConfig
 
-from flask import (Flask, render_template, session,
+from flask import (Flask, render_template, session, current_app,
 					blueprints,jsonify, redirect, url_for)
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect,CSRFError
 from flask_socketio import SocketIO
+from werkzeug.local import LocalProxy
 
+
+# setup app logging
+dictConfig({
+    'version': 1,
+    'formatters': {'default': {
+        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    }},
+    'handlers': {'wsgi': {
+        'class': 'logging.StreamHandler',
+        'stream': 'ext://flask.logging.wsgi_errors_stream',
+        'formatter': 'default'
+    }},
+    'root': {
+        'level': 'INFO',
+        'handlers': ['wsgi']
+    }
+})
+logger = LocalProxy(lambda: current_app.logger)
 
 # Define the WSGI application object
 app = Flask(__name__, static_url_path = '/static')
@@ -24,7 +44,6 @@ db = SQLAlchemy(app)
 # in-memory data stores for various operations
 words = open('./words.csv').read().splitlines()
 rooms = {}
-# TODO: check purpose of d_url and translate to new schema
 room_urls = {}
 
 # csrf protection
@@ -40,11 +59,9 @@ def not_found(error):
 	return render_template('error.html.j2', error=error) , 404
 
 # authorization for the logged in state
-# modify this according to your needs
 def requires_auth(f):
 	@wraps(f)
 	def decorated(*args, **kwargs):
-		# FIXME: change this part according to your login mechanism
 		if 'user' not in session:
 			return redirect(url_for('main.main_route'))
 		return f(*args, **kwargs)
