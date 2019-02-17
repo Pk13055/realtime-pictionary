@@ -5,7 +5,7 @@ from flask import (Blueprint, flash, g, jsonify, redirect, render_template,
                    request, session, url_for)
 
 import app.main.helper as helper
-from app import db, models, requires_auth, room_urls, rooms, words
+from app import db, models, requires_auth, sketch_urls, rooms, words
 
 main = Blueprint('main', __name__, url_prefix='/')
 
@@ -17,6 +17,7 @@ def main_route():
 	:param POST: username, room_id -> str, str
 	:return context**: template
 	"""
+	seed = hashlib.md5(str(random.random()).encode()).hexdigest()
 	if request.method == "POST":
 		session['word'] = random.choice(words)
 		name = request.form['name']
@@ -30,7 +31,8 @@ def main_route():
 		return redirect(url_for('main.chat'))
 
 	context_kwargs = {
-		'title': "Homepage - Login"
+		'title': "Homepage - Login",
+		'seed': seed,
 	}
 	return render_template('main/index.html.j2', **context_kwargs)
 
@@ -56,34 +58,35 @@ def chat():
 	else:
 		# create a new room and assign drawer role (default)
 		rooms.update({room: name.strip()})
-		room_urls.update({room: None})
+		sketch_urls.update({room: None})
 
+	session['user'].update({'role': role})  # update the role in the session
 	context_kwargs = {
 		'title': "Chat",
 		'role': role,
 		'user': user,
-		'word': word
+		'word': word,
+		'room': room
 	}
 	return render_template('main/chat.html.j2', **context_kwargs)
 
 
-@main.route('/updateImg', methods=['GET'])
+@main.route('/logout', methods=['POST'])
 @requires_auth
-def update_route():
-	"""Update the canvas template
+def logout_route():
+	"""Logout the user and remove all session data
 
-	:param url_params: vy -> str: The params for the drawing
-	:return result: dict -> success status
+	TODO: deprecate this route after handling socketio events
+	:param POST: None
+	:returns status: dict -> Response status
 	"""
-	try:
-		url = request.args.get('vy', None)
-		room = session['user']['room']
-		room_urls.update({room: url})
-		status, error = True, None
-	except Exception as e:
-		status, error = False, str(e)
-	finally:
-		return jsonify({
-			'status': status,
-			'error': error
-		})
+	final_status = all([
+		session.pop('user', False),
+		session.pop('word', False)
+		])
+	return jsonify({
+		'status': final_status
+	})
+
+
+import app.main.helper as helper

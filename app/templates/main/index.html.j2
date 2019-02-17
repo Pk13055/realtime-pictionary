@@ -1,8 +1,29 @@
-{% extends 'main/base.html.j2' %}
+{% extends "main/base.html.j2" %}
 {% block content %}
 <div class="row">
-	<div class="col-xs-12">
-		<div class="well">{{ data }}</div>
+	<div class="col s12">
+		<div class="card card-medium">
+			<form method="POST">
+				<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+				<div class="card-content">
+					<span class="card-title"><h3>Login</h3></span>
+					<p class="center-align">
+						<img src="https://www.gravatar.com/avatar/{{ seed }}?s=250&d=identicon&r=PG" class="img-responsive">
+					</p>
+					<div class="input-field">
+						<input id="name" name="name" type="text" placeholder="John Appleseed" class="validate" required>
+						<label for="name">Name</label>
+					</div>
+					<div class="input-field">
+							<input id="room" name="room" type="text" placeholder="ABC" class="validate" required>
+							<label for="room">room</label>
+						</div>
+				</div>
+				<div class="card-action">
+					<button class="btn btn-dark waves-effect waves-light" type="submit">Login <i class="material-icons">keyboard_arrow_right</i></button>
+				</div>
+			</form>
+		</div>
 	</div>
 </div>
-{% endblock %}
+{% endblock content %}

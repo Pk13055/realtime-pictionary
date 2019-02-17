@@ -5,6 +5,7 @@ from flask import (Flask, render_template, session, current_app,
 					blueprints,jsonify, redirect, url_for)
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect,CSRFError
+from flask_cors import CORS
 from flask_socketio import SocketIO
 from werkzeug.local import LocalProxy
 
@@ -30,12 +31,16 @@ logger = LocalProxy(lambda: current_app.logger)
 # Define the WSGI application object
 app = Flask(__name__, static_url_path = '/static')
 
+# CORS allowance for sockets
+cors = CORS(app, resources={
+        r"/*": {"origins":"*"}
+    })
+
 # Configurations
 app.config.from_object('config')
 
 # initialize socketIO
-socketio = SocketIO()
-socketio.init_app(app)
+socketio = SocketIO(app)
 
 # Define the database object which is imported
 # by modules and controllers
@@ -44,7 +49,7 @@ db = SQLAlchemy(app)
 # in-memory data stores for various operations
 words = open('./words.csv').read().splitlines()
 rooms = {}
-room_urls = {}
+sketch_urls = {}
 
 # csrf protection
 csrf=CSRFProtect(app)

@@ -1,0 +1,190 @@
+{% extends "main/base.html.j2" %}
+{% block head %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<script>
+	const socket = io.connect(String(window.location));
+</script>
+{% endblock head %}
+{% block scripts %}
+<script>
+	$(document).ready(function(){
+		// Visual changes and initializations
+		$('.tooltipped').tooltip();
+		$('.collapsible').collapsible();
+
+		// socketIO
+		socket.on('connect', () => {
+			// when a new client connection is established
+			socket.emit('joined', {}, function(resp) {
+				console.log(resp);
+			});
+		});
+		socket.on('disconnect', (reason) => {
+			if (reason === 'io server disconnect') {
+				// the disconnection was initiated by the server, you need to reconnect manually
+				alert(`Connection lost! ${String(reason)} | Attempting to reconnect!`);
+				socket.connect();
+			}
+			// else the socket will automatically try to reconnect
+		});
+		socket.on('status', (payload) => {
+			// when a status update arrives
+			alert(payload);
+			let data = JSON.parse(payload);
+			console.log(data);
+			let $chatbox = $("ul#chatbox");
+			$chatbox.append($("<li>").append([
+				$("<div>", {'class' : "collapsible-header"}).val(`${data.sender}`),
+				$("<div>", {'class' : "collapsible-body"}).val(`${data.message}`)
+				]));
+		});
+		socket.on('message', (payload) => {
+			// when a message arrives
+			let data = JSON.parse(payload);
+			let $chatbox = $("ul#chatbox");
+			$chatbox.append($("<li>").append([
+				$("<div>", {'class' : "collapsible-header"}).val(`${data.sender}`),
+				$("<div>", {'class' : "collapsible-body"}).val(`${data.message}`)
+				]));
+		});
+		socket.on('image', (payload) => {
+			// update the image every time an update is broadcasted
+			let $canvasImg = $("img#canvas-img");
+			$canvasImg.attr('src', payload.image);
+		});
+
+		// SocketIO event listeners and handlers
+
+		$("button#send-chat").on('click', function() {
+			// send chat message on send btn click
+			let $message = $("textarea#chat-field"),
+			sender = $("input[name='sender']").val(),
+			data = {
+				'message': $message.val(),
+				'sender': sender
+			};
+			if($message.val() != "")
+				socket.emit('text', {
+					message: JSON.stringify(data),
+				});
+			setTimeout(() => $message.val(""), 500);
+		});
+
+		$("div#like-controls").on('click', 'button', function() {
+			let sender = $("input[name='sender']").val(),
+			type = $(this).data('tooltip'),
+			message = `${sender} ${type} the drawing!`,
+			data = {
+				'message': message,
+				'sender': sender
+			};
+			socket.emit('text', {
+				'message': JSON.stringify(data)
+			});
+		});
+
+		$("button#leave-room").on('click', function() {
+			// leave room issue left and disconnect
+			socket.emit('left', {}, () => {
+				socket.disconnect();
+				window.location.replace('/');
+			});
+			/**
+			// alternate method to logout if socket does not disconnect
+			$.ajax({
+				url: '/logout',
+				method: "POST",
+				headers: {
+					'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+				},
+				success: function(resp) {
+					alert("User logged out!");
+					window.location.replace("/");
+				}
+			});
+			**/
+		});
+	});
+</script>
+{% if role == 'drawer' %}
+<script>
+	$(document).ready(function() {
+		let $can = $("canvas#draw-canvas");
+//		setInterval(() => {
+//			// set an update to the canvas through socket emission
+//			let imgData = $can[0].toDataURL(),
+//				sender = $("input[name='sender']").val(),
+//				data = {
+//					'data': imgData,
+//					'sender': sender,
+//				};
+//			socket.emit('image', data);
+//		}, 800);
+	});
+</script>
+{% endif %}
+{% endblock scripts %}
+{% block content %}
+<div class="row">
+	<div class="col s12">
+		<div class="card-panel">
+			<h3 class="header">
+				<span class="badge teal right-align white-text">{{ role | upper }}</span> Room {{ room | upper }} -
+				<strong>{{ user.name | title }}
+				</strong>
+				<button type="button" id="leave-room" class="btn-floating btn-large tooltipped teal waves-effect waves-dark left-align"
+				data-position="bottom" data-tooltip="Leave room">
+				<i class="material-icons">exit_to_app</i>
+			</button>
+		</h3>
+	</div>
+</div>
+</div>
+<div class="row">
+	<div class="col s12 m6">
+		<div class="card-panel">
+			<h4 class="card-title flow-text"><strong>Draw area</strong></h4>
+			{% if role == "drawer" %}
+			<canvas id="draw-canvas" width="800px" height="600px"></canvas>
+			<div id="draw-controls" class="center-align">
+				<button type="button" class="btn-floating btn-large tooltipped teal waves-effect waves-dark "
+				data-position="bottom" data-tooltip="Draw">
+				<i class="material-icons">edit</i>
+			</button> &nbsp;
+			<span class="flow-text card-panel teal"><em>{{ session['word'] }}</em></span> &nbsp;
+			<button type="button" class="btn-floating btn-large tooltipped teal waves-effect waves-dark "
+			data-position="bottom" data-tooltip="Erase">
+			<i class="material-icons">remove_circle</i>
+		</button>
+	</div>
+	{% else %}
+	<img id="canvas-img" class="img-responsive" alt="draw-canvas" width="800px" height="600px">
+	{% endif %}
+</div>
+</div>
+<div class="col s12 m6">
+	<div class="card-panel">
+		<span class="card-title flow-text"><strong>Chat &amp; Guesses</strong></span>
+		<ul class="collapsible" id="chatbox">
+		</ul>
+		{% if role == 'viewer' %}
+		<input type="hidden" name="sender" value="{{ user.name }}">
+		<div class="input-field">
+			<textarea id="chat-field" class="materialize-textarea"></textarea>
+			<label for="textarea1">Write a message</label>
+			<button type="button" id="send-chat" class="btn btn-flat teal waves-effect waves-dark"><i class="material-icons">send</i></button>
+		</div>
+		<div id="like-controls" class="right-align">
+			<button type="button" class="btn-floating tooltipped teal waves-effect waves-dark " data-position="bottom" data-tooltip="like">
+				<i class="material-icons">thumb_up</i>
+			</button>
+			<button type="button" class="btn-floating tooltipped teal waves-effect waves-dark " data-position="bottom" data-tooltip="dislike">
+				<i class="material-icons">thumb_down</i>
+			</button>
+		</div>
+		{% endif %}
+	</div>
+</div>
+</div>
+{% endblock content %}
+

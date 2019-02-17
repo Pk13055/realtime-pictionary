@@ -1,35 +1,36 @@
 from flask import session
 from flask_socketio import emit, join_room, leave_room
 
-from app import logger, requires_auth, rooms, socketio
+from app import logger, requires_auth, sketch_urls, rooms, socketio
 
 
-@socketio.on('joined', namespace='/chat/')
-@requires_auth
-def joined_io(message):
+@socketio.on('joined', namespace='/chat')
+def joined(message):
 	"""Emitted by clients who join a room
 
 	:param message: str -> Message broadcasted
 	:return None:
 	"""
+	print("joined", message)
 	user = session['user']
 	room = user['room']
 	name = user['name']
-
 	join_room(room)
 	message = f"{name} has joined the room!"
-	emit(message)
+	emit('status', {
+		'message': message
+	}, room=room)
 	logger.info(message)
 
 
-@socketio.on('text')
-@requires_auth
-def text_io(message, namespace='/chat/'):
+@socketio.on('message', namespace='/chat')
+def message(json, methods=['GET', 'POST']):
 	"""IO listener to capture messages by a user in a session
 
 	:param message: str -> Message broadcasted
 	:return None:
 	"""
+	print(message)
 	user = session['user']
 	message = f"{user['name']} : {message['message']}"
 	emit('message', {
@@ -38,9 +39,26 @@ def text_io(message, namespace='/chat/'):
 	logger.info(message)
 
 
-@socketio.on('left', namespace='/chat/')
-@requires_auth
-def left_io(message):
+@socketio.on('image', namespace='/chat')
+def image(json, methods=['GET', 'POST']):
+	"""Update the image in the urls
+
+	:param img: base64 encoded image data blob
+	:return None:
+	"""
+	user = session['user']
+	if data != sketch_urls[sender]:
+		sketch_urls.update({
+			sender: data
+		})
+	emit('image', {
+		'image': data
+	}, room=user['room'])
+	logger.info(f"{sender} image updated!")
+
+
+@socketio.on('left', namespace='/chat')
+def left(json, methods=['GET', 'POST']):
 	"""Capture left events, ie when a user leaves
 
 	:param message: str -> Broadcasted message
@@ -55,5 +73,5 @@ def left_io(message):
 	message = f"{name} has left the room!"
 	emit('message', {
 		'message': message
-	}, room=room)
+	}, room=room, namespace='/chat')
 	logger.info(message)
